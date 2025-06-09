@@ -1,7 +1,13 @@
+###########################################################
+# open ps1 in editor
+# In the shell, navigate to the path whit th ZIP files
+# then F5/run the script
+###########################################################
+
 
 
 # Set source directory containing zip files
-$zipDirectory    = $PSScriptRoot 
+$zipDirectory    = (Get-Location).path
 $destinationFolder = Join-Path $zipDirectory "emasster"
 
 # Create 'emasster' folder if it doesn't exist
