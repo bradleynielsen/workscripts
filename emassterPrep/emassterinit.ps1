@@ -21,6 +21,7 @@ if (-not (Test-Path $tempExtractPath)) {
     New-Item -Path $tempExtractPath -ItemType Directory
 }
 
+write "Extracting files"
 # Process each zip file
 Get-ChildItem -Path $zipDirectory -Filter *.zip | ForEach-Object {
     $zipFile = $_
@@ -34,25 +35,59 @@ Get-ChildItem -Path $zipDirectory -Filter *.zip | ForEach-Object {
 
     # Move and rename .nessus files
     Get-ChildItem -Path $tempExtractPath -Recurse -Filter *.nessus | ForEach-Object {
+        # rename and move file             
         $newName = "$zipName-$($_.Name)"
         $destinationPath = Join-Path $destinationFolder $newName
         Move-Item -Path $_.FullName -Destination $destinationPath -Force
     }
 }
 
+write "Cleaning up temp files"
 # Cleanup temp folder (optional)
 Remove-Item -Path $tempExtractPath -Recurse -Force
 
-# get first file
-$nessusFile = (Get-ChildItem -Path $destinationFolder)[0]
+# get  files
+$nessusFiles = (Get-ChildItem -Path $destinationFolder)
 
-# get xml
-$NessusXML = [xml](Get-Content -Path $nessusFile)
 
-# get date
-$ScanEndTime = $NessusXML.NessusClientData_v2.Report.ReportHost.HostProperties.tag | Where-Object {$_.name -eq "HOST_END"} | Select-Object -ExpandProperty '#text'
-$InputFormat = "ddd MMM dd HH:mm:ss yyyy"
-$DateTimeObject = [datetime]::ParseExact($ScanEndTime, $InputFormat, $null)
-$scanDate = $DateTimeObject.ToString("yyyy-MM-dd") 
+foreach ($nessusFile in $nessusFiles) {
+    
+
+    Write-Host "Fetching xml... " -NoNewline
+    # get xml
+    $NessusXML = [xml](Get-Content -Path $nessusFile.FullName)
+
+    # get date
+    $ScanEndTime = $NessusXML.NessusClientData_v2.Report.ReportHost.HostProperties.tag | Where-Object {$_.name -eq "HOST_END"} | Select-Object -ExpandProperty '#text'
+    $InputFormat = "ddd MMM dd HH:mm:ss yyyy"
+    
+    #if there is a scan date:
+    if ($ScanEndTime){
+        try{
+            $DateTimeObject = [datetime]::ParseExact($ScanEndTime, $InputFormat, $null)
+        }catch{
+            try{
+                $DateTimeObject = [datetime]::ParseExact($ScanEndTime[0], $InputFormat, $null)
+            }catch{
+                Write-Host "Scan file blank" 
+            }
+        }
+        $scanDate = $DateTimeObject.ToString("yyyy-MM-dd") 
+    } else { #if no scan date:
+        $scanDate = "NULL_SCAN_DATE"
+    }
+
+    #rename file
+    write "Adding date to file"
+    $NewFileName = $scanDate + "-" + $nessusFile.BaseName + ".nessus"
+    Rename-Item -Path $nessusFile.FullName -NewName $NewFileName
+
+
+}
+
+
+
+
+
 
 
