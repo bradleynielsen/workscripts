@@ -42,3 +42,17 @@ Get-ChildItem -Path $zipDirectory -Filter *.zip | ForEach-Object {
 
 # Cleanup temp folder (optional)
 Remove-Item -Path $tempExtractPath -Recurse -Force
+
+# get first file
+$nessusFile = (Get-ChildItem -Path $destinationFolder)[0]
+
+# get xml
+$NessusXML = [xml](Get-Content -Path $nessusFile)
+
+# get date
+$ScanEndTime = $NessusXML.NessusClientData_v2.Report.ReportHost.HostProperties.tag | Where-Object {$_.name -eq "HOST_END"} | Select-Object -ExpandProperty '#text'
+$InputFormat = "ddd MMM dd HH:mm:ss yyyy"
+$DateTimeObject = [datetime]::ParseExact($ScanEndTime, $InputFormat, $null)
+$scanDate = $DateTimeObject.ToString("yyyy-MM-dd") 
+
+
